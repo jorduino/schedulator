@@ -21,6 +21,4 @@ try {
 	process.exit();
 }
 
-schedule.engagements.forEach(engagement => {
-	console.log(engagement);
-});
+console.log(JSON.stringify(schedule.generateRotation()));
