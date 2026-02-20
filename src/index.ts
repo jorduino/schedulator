@@ -1,6 +1,6 @@
 import { existsSync } from "node:fs";
 import * as fs from "node:fs/promises";
-import { Schedule } from "./schedule";
+import Schedule from "./schedule";
 
 const scheduleLocation = "./schedule.json";
 const employees = ["Employee 1", "Employee 2", "Employee 3"];
@@ -23,11 +23,16 @@ try {
 	console.error(err);
 	process.exit();
 }
-function prettyPrint(obj: object) {
-	return JSON.stringify(obj, null, 2);
+if (!(await fs.exists("./out"))) {
+	await fs.mkdir("./out");
 }
 
-await fs.mkdir("./out");
-await fs.writeFile("./out/Schedule-Rotated", prettyPrint(schedule.generateRotation()));
-await fs.writeFile("./out/Schedule-Simple", prettyPrint(schedule.getSimpleSchedule()));
+const rotated = JSON.stringify(schedule.generateRotation(), null, 2);
+const forceRotated = JSON.stringify(schedule.forceGenerateRotation(), null, 2);
+const simple = JSON.stringify(schedule.getSimpleSchedule(), null, 2);
+
+await fs.writeFile("./out/Schedule-Rotated.json", rotated);
+await fs.writeFile("./out/Schedule-Force-Rotated.json", forceRotated);
+await fs.writeFile("./out/Schedule-Simple.json", simple);
+
 console.log("Wrote some stuff");

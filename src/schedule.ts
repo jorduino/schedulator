@@ -19,6 +19,7 @@ const ShowObjectSchema = z.object({
 const ShowSchema = z.union([ShowStringSchema, ShowObjectSchema]);
 const EngagementSchema = z.object({
 	town: z.string(),
+	timezone: z.string().optional(),
 	shows: z.array(ShowSchema).optional(),
 });
 const ScheduleDataSchema = z.object({
@@ -33,7 +34,7 @@ export type Show = z.infer<typeof ShowSchema>;
 export type Engagement = z.infer<typeof EngagementSchema>;
 export type ScheduleData = z.infer<typeof ScheduleDataSchema>;
 
-export class Schedule {
+export default class Schedule {
 	engagements: Engagement[];
 	employees?: string[];
 	locations?: string[];
@@ -51,6 +52,7 @@ export class Schedule {
 				},
 				{
 					town: "example2",
+					timezone: "GMT",
 					shows: [
 						{
 							date: "2000-01-11T12:00:00",
@@ -80,44 +82,84 @@ export class Schedule {
 				typeof p1 === "string" ? JSON.parse(p1) : p1,
 			);
 			this.engagements = validated.engagements;
-			if (employees === undefined || locations === undefined) {
-			} else {
+			if (employees !== undefined && locations !== undefined) {
 				this.employees = employees;
 				this.locations = locations;
 			}
 		}
 	}
 
+	/**
+	 * Returns a new schedule with the rotation applied. Leaves original schedule untouched.
+	 * If the schedule has already been rotated, this will ignore any rotated shows.
+	 * Use forceGenerateRotation() to ignore any existing rotation information
+	 * @returns The schedule with the rotation
+	 */
 	generateRotation(): Schedule {
-		// TODO: write a better description
-		// returns a new schedule with placements that rotate from the final show in the schedule
-		const rotatedSchedule = new Schedule({ engagements: structuredClone(this.engagements) });
-		rotatedSchedule.engagements = rotatedSchedule.engagements.map(this.rotateOneEngagement);
+		const rotatedSchedule = new Schedule({ engagements: this.engagements });
+		rotatedSchedule.engagements = rotatedSchedule.engagements.map(engagement =>
+			Schedule.rotateOneEngagement(engagement, this.employees, this.locations),
+		);
 		return rotatedSchedule;
 	}
-	private rotateOneEngagement(engagement: Engagement): Engagement {
-		// TODO: this is a placeholder, please write this function
+
+	/**
+	 * Returns a new schedule with the rotation applied. Leaves original schedule untouched.
+	 * Ignores any existing rotation information
+	 * @returns The schedule with the rotation
+	 */
+	forceGenerateRotation(): Schedule {
+		// remove any information that may exist on this.engagements
+		const rotatedSchedule = new Schedule({
+			engagements: this.engagements,
+		}).getSimpleSchedule();
+		rotatedSchedule.engagements = rotatedSchedule.engagements.map(engagement =>
+			Schedule.rotateOneEngagement(engagement, this.employees, this.locations),
+		);
+		return rotatedSchedule;
+	}
+
+	private static rotateOneEngagement(
+		engagement: Engagement,
+		_employees: string[] | undefined,
+		_locations: string[] | undefined,
+	): Engagement {
 		const rotatedEngagement = structuredClone(engagement);
-		// if (rotatedEngagement.shows && rotatedEngagement.shows.length > 0) {
-		// 	const shows = rotatedEngagement.shows;
-		// 	for (let i = shows.length; i >= 0; i--) {
-		// 		let show = shows[i];
-		// 		show = typeof show === "string" ? { date: show, placements: [] } : show;
-		// 	}
-		// } else {
-		// 	rotatedEngagement.shows = [];
-		// }
+
+		if (!rotatedEngagement.shows || rotatedEngagement.shows.length === 0) {
+			rotatedEngagement.shows = [];
+			return rotatedEngagement;
+		}
+
+		const shows = rotatedEngagement.shows;
+		for (let i = shows.length - 1; i >= 0; i--) {
+			let show = shows[i];
+			show = {
+				// TODO: fix this
+				date: typeof show === "string" ? show : (show?.date ?? ""),
+				placements: typeof show === "string" || show === undefined ? [] : show.placements,
+			};
+			shows[i] = show;
+		}
+
 		return rotatedEngagement;
 	}
 
+	/**
+	 * Returns a new schedule without any rotation information
+	 * @returns The schedule with only date strings
+	 */
 	getSimpleSchedule(): Schedule {
-		// TODO: write better description
-		// converts a schedule's Shows from ShowObjects to ShowStrings
-		const simpleSchedule = new Schedule({ engagements: structuredClone(this.engagements) });
-		simpleSchedule.engagements = simpleSchedule.engagements.map(this.simplifyOneEngagement);
+		const simpleSchedule = new Schedule({ engagements: this.engagements });
+		simpleSchedule.engagements = simpleSchedule.engagements.map(Schedule.simplifyOneEngagement);
 		return simpleSchedule;
 	}
-	private simplifyOneEngagement(engagement: Engagement): Engagement {
+	/**
+	 * Returns a new engagement that has been simplified
+	 * @param {Engagement} engagement the engagement to simplify
+	 * @returns a new, simplified engagement
+	 */
+	private static simplifyOneEngagement(engagement: Engagement): Engagement {
 		return {
 			town: engagement.town,
 			shows: engagement.shows?.map(show => {
