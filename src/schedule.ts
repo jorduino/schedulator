@@ -35,11 +35,15 @@ export type ScheduleData = z.infer<typeof ScheduleDataSchema>;
 
 export class Schedule {
 	engagements: Engagement[];
+	employees?: string[];
+	locations?: string[];
 
 	constructor();
-	constructor(scheduleData: ScheduleData);
-	constructor(p1?: unknown) {
-		if (p1 === undefined) {
+	constructor(scheduleData: ScheduleData | string);
+	constructor(scheduleDate: ScheduleData | string, employees: string[], locations: string[]);
+
+	constructor(p1?: ScheduleData | string, employees?: string[], locations?: string[]) {
+		if (p1 === undefined && employees === undefined && locations === undefined) {
 			this.engagements = [
 				{
 					town: "example1",
@@ -67,15 +71,62 @@ export class Schedule {
 					],
 				},
 			];
+			this.employees = ["Employee 1", "Employee 2", "Employee 3"];
+			this.locations = ["Location A", "Location B", "Location C"];
 		} else {
 			// Validate and parse in one step
-			const validated = ScheduleDataSchema.parse(p1);
+			const validated = ScheduleDataSchema.parse(
+				// if p1 is a string, convert to json before validating
+				typeof p1 === "string" ? JSON.parse(p1) : p1,
+			);
 			this.engagements = validated.engagements;
+			if (employees === undefined || locations === undefined) {
+			} else {
+				this.employees = employees;
+				this.locations = locations;
+			}
 		}
 	}
 
-	generateRotation() {
-		// TODO: do this doesn't do anything
-		return structuredClone(this.engagements);
+	generateRotation(): Schedule {
+		// TODO: write a better description
+		// returns a new schedule with placements that rotate from the final show in the schedule
+		const rotatedSchedule = new Schedule({ engagements: structuredClone(this.engagements) });
+		rotatedSchedule.engagements = rotatedSchedule.engagements.map(this.rotateOneEngagement);
+		return rotatedSchedule;
+	}
+	private rotateOneEngagement(engagement: Engagement): Engagement {
+		// TODO: this is a placeholder, please write this function
+		const rotatedEngagement = structuredClone(engagement);
+		// if (rotatedEngagement.shows && rotatedEngagement.shows.length > 0) {
+		// 	const shows = rotatedEngagement.shows;
+		// 	for (let i = shows.length; i >= 0; i--) {
+		// 		let show = shows[i];
+		// 		show = typeof show === "string" ? { date: show, placements: [] } : show;
+		// 	}
+		// } else {
+		// 	rotatedEngagement.shows = [];
+		// }
+		return rotatedEngagement;
+	}
+
+	getSimpleSchedule(): Schedule {
+		// TODO: write better description
+		// converts a schedule's Shows from ShowObjects to ShowStrings
+		const simpleSchedule = new Schedule({ engagements: structuredClone(this.engagements) });
+		simpleSchedule.engagements = simpleSchedule.engagements.map(this.simplifyOneEngagement);
+		return simpleSchedule;
+	}
+	private simplifyOneEngagement(engagement: Engagement): Engagement {
+		return {
+			town: engagement.town,
+			shows: engagement.shows?.map(show => {
+				if (typeof show === "string") {
+					return show;
+				} else {
+					return show.date;
+				}
+			}),
+		};
 	}
 }
