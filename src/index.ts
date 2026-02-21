@@ -27,8 +27,8 @@ if (!(await fs.exists("./out"))) {
 	await fs.mkdir("./out");
 }
 
-const rotated = JSON.stringify(schedule.generateRotation(true), null, 2);
-const forceRotated = JSON.stringify(schedule.forceGenerateRotation(true), null, 2);
+const rotated = JSON.stringify(await schedule.generateRotation(true), null, 2);
+const forceRotated = JSON.stringify(await schedule.forceGenerateRotation(true), null, 2);
 const simple = JSON.stringify(schedule.getSimpleSchedule(), null, 2);
 
 await fs.writeFile("./out/Schedule-Rotated.json", rotated);

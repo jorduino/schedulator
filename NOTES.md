@@ -56,8 +56,20 @@
 
 ---
 
+## TIMEZONE LOOKUP
+
+Timezone resolution lives in `src/utils/askUserForTimezone.ts` and is intentionally isolated for future GUI replacement. Current implementation uses Node's built-in `readline` (not a third-party library) to avoid Bun compatibility issues with cursor positioning. Responses are cached in a module-level `Map` so each city is only asked once per run. Ctrl+C exits cleanly with a message.
+
+Resolution order:
+
+1. City found in cache → return immediately
+2. Exactly one match in `city-timezones` → return automatically
+3. Multiple matches → numbered list, user picks or enters their own
+4. No matches → user enters a timezone string manually
+
+---
+
 ## STILL TODO
 
-- [ ] Implement `RotatedSchedule` type (Zod schema + inferred type) when implementing `createCalendarFile`
-- [ ] Implement `timezoneFromTown` — prompt the user via CLI when timezone is missing, cache responses
+- [ ] Implement `RotatedSchedule` type when implementing `createCalendarFile` — all shows as `ShowObject`, timezone required on every engagement
 - [ ] Implement `createCalendarFile` — generate a `.ics` file from a `RotatedSchedule`

@@ -1,4 +1,5 @@
 import { z } from "zod";
+import lookupTimezone from "./utils/askUserForTimezone";
 
 const ShowStringSchema = z
 	.string()
@@ -29,11 +30,13 @@ const ScheduleDataSchema: z.ZodType<ScheduleData> = z.object({
 				.optional(),
 		}),
 	),
+	employees: z.array(z.string()).optional(),
+	locations: z.array(z.string()).optional(),
 });
 
 export type ShowString = z.infer<typeof ShowStringSchema>;
-export type Employee = string & { __brand: "Employee" };
-export type Location = string & { __brand: "Location" };
+export type EmployeeString = string & { __brand: "Employee" };
+export type LocationString = string & { __brand: "Location" };
 export type LocationObject = {
 	location: string;
 	employee: string;
@@ -50,6 +53,8 @@ export type Engagement = {
 };
 export type ScheduleData = {
 	engagements: Engagement[];
+	employees?: string[];
+	locations?: string[];
 };
 
 const exampleEngagements = [
@@ -83,8 +88,8 @@ const exampleEngagements = [
 
 export default class Schedule {
 	engagements: Engagement[] = exampleEngagements;
-	employees: Employee[] = ["Employee 1", "Employee 2", "Employee 3"] as Employee[];
-	locations: Location[] = ["Location A", "Location B", "Location C"] as Location[];
+	employees: EmployeeString[] = ["Employee 1", "Employee 2", "Employee 3"] as EmployeeString[];
+	locations: LocationString[] = ["Location A", "Location B", "Location C"] as LocationString[];
 
 	constructor();
 	constructor(scheduleData: ScheduleData | string);
@@ -98,10 +103,12 @@ export default class Schedule {
 				typeof p1 === "string" ? JSON.parse(p1) : p1,
 			);
 			this.engagements = validated.engagements;
+			if (validated.employees) this.employees = validated.employees as EmployeeString[];
+			if (validated.locations) this.locations = validated.locations as LocationString[];
 
 			if (employees !== undefined && locations !== undefined) {
-				this.employees = employees as Employee[];
-				this.locations = locations as Location[];
+				this.employees = employees as EmployeeString[];
+				this.locations = locations as LocationString[];
 			}
 		}
 	}
@@ -112,21 +119,24 @@ export default class Schedule {
 	 * Use forceGenerateRotation() to overwrite any existing rotation information
 	 * @returns The schedule with the rotation
 	 */
-	generateRotation(keepFirstShow?: boolean): Schedule {
+	async generateRotation(keepFirstShow?: boolean): Promise<Schedule> {
 		const rotatedSchedule = new Schedule(
 			{ engagements: this.engagements },
 			this.employees,
 			this.locations,
 		);
-
-		rotatedSchedule.engagements = rotatedSchedule.engagements.map(engagement =>
-			Schedule.rotateOneEngagement(
-				engagement,
-				this.employees,
-				this.locations,
-				keepFirstShow ?? false,
-			),
-		);
+		const rotatedEngagements: Engagement[] = [];
+		for (const engagement of rotatedSchedule.engagements) {
+			rotatedEngagements.push(
+				await Schedule.rotateOneEngagement(
+					engagement,
+					this.employees,
+					this.locations,
+					keepFirstShow ?? false,
+				),
+			);
+		}
+		rotatedSchedule.engagements = rotatedEngagements;
 		return rotatedSchedule;
 	}
 
@@ -135,7 +145,7 @@ export default class Schedule {
 	 * Ignores any existing rotation information
 	 * @returns The schedule with the rotation
 	 */
-	forceGenerateRotation(keepFirstShow?: boolean): Schedule {
+	async forceGenerateRotation(keepFirstShow?: boolean): Promise<Schedule> {
 		// remove any information that may exist on this.engagements
 		const rotatedSchedule = new Schedule(
 			{
@@ -145,24 +155,27 @@ export default class Schedule {
 			this.locations,
 		).getSimpleSchedule();
 
-		rotatedSchedule.engagements = rotatedSchedule.engagements.map(engagement =>
-			Schedule.rotateOneEngagement(
-				engagement,
-				this.employees,
-				this.locations,
-				keepFirstShow ?? false,
-			),
-		);
-
+		const rotatedEngagements: Engagement[] = [];
+		for (const engagement of rotatedSchedule.engagements) {
+			rotatedEngagements.push(
+				await Schedule.rotateOneEngagement(
+					engagement,
+					this.employees,
+					this.locations,
+					keepFirstShow ?? false,
+				),
+			);
+		}
+		rotatedSchedule.engagements = rotatedEngagements;
 		return rotatedSchedule;
 	}
 
-	static rotateOneEngagement(
+	static async rotateOneEngagement(
 		engagement: Engagement,
-		employees: Employee[],
-		locations: Location[],
+		employees: EmployeeString[],
+		locations: LocationString[],
 		keepFirstShow: boolean,
-	): Engagement {
+	): Promise<Engagement> {
 		const rotatedEngagement = structuredClone(engagement);
 		employees = structuredClone(employees);
 
@@ -170,7 +183,9 @@ export default class Schedule {
 			rotatedEngagement.shows = [];
 			return rotatedEngagement;
 		}
-
+		if (!rotatedEngagement.timezone) {
+			rotatedEngagement.timezone = await lookupTimezone(engagement.town);
+		}
 		const shows = rotatedEngagement.shows;
 		const endIndex = keepFirstShow ? 1 : 0;
 		if (keepFirstShow) {
@@ -197,7 +212,10 @@ export default class Schedule {
 
 		return rotatedEngagement;
 	}
-	static mapEmployeeAndLocation(employees: Employee[], locations: Location[]): LocationObject[] {
+	static mapEmployeeAndLocation(
+		employees: EmployeeString[],
+		locations: LocationString[],
+	): LocationObject[] {
 		if (employees.length !== locations.length) {
 			throw new Error("employees and locations must be the same length");
 		}

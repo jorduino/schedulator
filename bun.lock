@@ -5,6 +5,7 @@
     "": {
       "name": "new-schedulator",
       "dependencies": {
+        "city-timezones": "^1.3.3",
         "zod": "^4.3.6",
       },
       "devDependencies": {
@@ -119,6 +120,8 @@
     "character-entities-legacy": ["character-entities-legacy@3.0.0", "", {}, "sha512-RpPp0asT/6ufRm//AJVwpViZbGM/MkjQFxJccQRHmISF/22NBtsHqAWmL+/pmkPWoIUJdWyeVleTl1wydHATVQ=="],
 
     "character-reference-invalid": ["character-reference-invalid@2.0.1", "", {}, "sha512-iBZ4F4wRbyORVsu0jPV7gXkOsGYjGHPmAyv+HiHG8gi5PtC9KI2j1+v8/tlibRvjoWX027ypmG/n0HtO5t7unw=="],
+
+    "city-timezones": ["city-timezones@1.3.3", "", {}, "sha512-tyH1Tje3mee1mWkjerhx/8CLOfTJn6A5L6swAqLRceoToj9bvKNkfcKESoxG9rApXBKxKeZQUQbbzYcoRSJbZw=="],
 
     "cli-cursor": ["cli-cursor@5.0.0", "", { "dependencies": { "restore-cursor": "^5.0.0" } }, "sha512-aCj4O5wKyszjMmDT4tZj93kxyydN/K5zPWSCe6/0AV/AA1pqe5ZBIw0a2ZfPQV7lL5/yb5HsUreJ6UFAF1tEQw=="],
 
