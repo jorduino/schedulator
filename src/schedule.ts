@@ -202,11 +202,14 @@ export default class Schedule {
 			throw new Error("employees and locations must be the same length");
 		}
 
-		const locationObjectArray: LocationObject[] = [];
-		for (let i = 0; i < employees.length; i++) {
-			locationObjectArray.push({ location: locations[i]!, employee: employees[i]! });
+		const result: LocationObject[] = [];
+		for (const [i, location] of locations.entries()) {
+			const employee = employees[i];
+			if (employee !== undefined) {
+				result.push({ location, employee });
+			}
 		}
-		return locationObjectArray;
+		return result;
 	}
 
 	/**
