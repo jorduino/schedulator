@@ -35,31 +35,29 @@
 
 ## ROTATION RULES
 
-- The **last show of every engagement** always has the same fixed assignment (same person always does strike/load-out at the same location)
-- Earlier shows in an engagement are derived by rotating **backwards** from the last show
+- Shows are stored in chronological order; the rotation is computed **backwards** from the last show
+- The **last show** of every engagement gets the initial (unrotated) employee assignment
+- Each earlier show rotates the employee list forward by one step relative to the show after it
 - Example with 3 locations and 3 employees:
   - Last show: Employee1→LocationA, Employee2→LocationB, Employee3→LocationC
   - Second-to-last: Employee2→LocationA, Employee3→LocationB, Employee1→LocationC
   - Third-to-last: Employee3→LocationA, Employee1→LocationB, Employee2→LocationC
+- **`keepFirstShow`**: pass `true` to `generateRotation` or `forceGenerateRotation` to lock in the first show's assignment using the initial employee order, leaving it out of the backwards rotation. If the first show is already a string it will still have a placements object generated for it — it just won't be rotated.
 - **Manual overrides**: if a show already has placements defined in the JSON (e.g. someone needs to be moved due to a doctor's appointment), `generateRotation` will leave that show alone. Use `forceGenerateRotation` to ignore all existing placements and recompute everything from scratch.
 
 ---
 
-## DATA TYPES (TODO: implement these as Zod schemas + inferred types)
+## DATA TYPES
 
-Three distinct schedule shapes are needed:
+- **`Schedule`** (current): the inclusive input/intermediate type. Shows can be either date strings or objects with `date` + `placements`. Timezone is optional. This is the correct shape for user input — there's no need for a more restrictive input type since timezones are valid optional fields.
+- **`RotatedSchedule`** (planned): the fully generated output type. All shows as objects with placements, timezone required on every engagement. Needed to make `createCalendarFile` safe at the type level — without it, that function can't enforce at compile time that every show has placements and every engagement has a timezone.
 
-- **`SimpleSchedule`**: what the user provides as input. Only `town` and show date strings. No timezone, no placements.
-- **`RotatedSchedule`**: the fully generated output. `town`, `timezone` (required), and shows as objects with `date` + `placements`.
-- **`Schedule`** (current generic): the mixed intermediate type that allows shows to be either strings or objects. Used internally.
-
-Currently all three are represented by the same `Schedule` class and `Engagement` type. The return types of `getSimpleSchedule()`, `generateRotation()`, and `forceGenerateRotation()` should eventually reflect these distinctions.
+`getSimpleSchedule()` is an internal utility that strips placements back to date strings before a force-rotation. It doesn't represent a distinct user-facing format and doesn't need its own type.
 
 ---
 
 ## STILL TODO
 
-- [ ] Create distinct Zod schemas and types for `SimpleSchedule` and `RotatedSchedule`
-- [ ] Implement the actual rotation math in `rotateOneEngagement` (compute placements from employee/location lists and show index relative to last show)
+- [ ] Implement `RotatedSchedule` type (Zod schema + inferred type) when implementing `createCalendarFile`
 - [ ] Implement `timezoneFromTown` — prompt the user via CLI when timezone is missing, cache responses
 - [ ] Implement `createCalendarFile` — generate a `.ics` file from a `RotatedSchedule`

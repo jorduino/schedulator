@@ -3,7 +3,7 @@ import * as fs from "node:fs/promises";
 import Schedule from "./schedule";
 
 const scheduleLocation = "./schedule.json";
-const employees = ["Employee 1", "Employee 2", "Employee 3"];
+const employees = ["Employee 1", "Employee 3", "Employee 2"];
 const locations = ["Location 1", "Location 2", "Location 3"];
 let schedule: Schedule;
 
@@ -27,8 +27,8 @@ if (!(await fs.exists("./out"))) {
 	await fs.mkdir("./out");
 }
 
-const rotated = JSON.stringify(schedule.generateRotation(), null, 2);
-const forceRotated = JSON.stringify(schedule.forceGenerateRotation(), null, 2);
+const rotated = JSON.stringify(schedule.generateRotation(true), null, 2);
+const forceRotated = JSON.stringify(schedule.forceGenerateRotation(true), null, 2);
 const simple = JSON.stringify(schedule.getSimpleSchedule(), null, 2);
 
 await fs.writeFile("./out/Schedule-Rotated.json", rotated);

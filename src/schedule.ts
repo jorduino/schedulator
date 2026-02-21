@@ -6,85 +6,102 @@ const ShowStringSchema = z
 		/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}$/,
 		"Invalid datetime format. Expected YYYY-MM-DDTHH:mm:ss",
 	);
-const LocationObjectSchema = z.array(
-	z.object({
-		location: z.string(),
-		employee: z.string(),
-	}),
-);
-const ShowObjectSchema = z.object({
-	date: ShowStringSchema,
-	placements: LocationObjectSchema,
-});
-const ShowSchema = z.union([ShowStringSchema, ShowObjectSchema]);
-const EngagementSchema = z.object({
-	town: z.string(),
-	timezone: z.string().optional(),
-	shows: z.array(ShowSchema).optional(),
-});
-const ScheduleDataSchema = z.object({
-	engagements: z.array(EngagementSchema),
+const ScheduleDataSchema: z.ZodType<ScheduleData> = z.object({
+	engagements: z.array(
+		z.object({
+			town: z.string(),
+			timezone: z.string().optional(),
+			shows: z
+				.array(
+					z.union([
+						ShowStringSchema,
+						z.object({
+							date: ShowStringSchema,
+							placements: z.array(
+								z.object({
+									location: z.string(),
+									employee: z.string(),
+								}),
+							),
+						}),
+					]),
+				)
+				.optional(),
+		}),
+	),
 });
 
-// Infer types from schemas
 export type ShowString = z.infer<typeof ShowStringSchema>;
-export type LocationObject = z.infer<typeof LocationObjectSchema>;
-export type ShowObject = z.infer<typeof ShowObjectSchema>;
-export type Show = z.infer<typeof ShowSchema>;
-export type Engagement = z.infer<typeof EngagementSchema>;
-export type ScheduleData = z.infer<typeof ScheduleDataSchema>;
+export type Employee = string & { __brand: "Employee" };
+export type Location = string & { __brand: "Location" };
+export type LocationObject = {
+	location: string;
+	employee: string;
+};
+export type ShowObject = {
+	date: ShowString;
+	placements: LocationObject[];
+};
+export type Show = ShowString | ShowObject;
+export type Engagement = {
+	town: string;
+	timezone?: string;
+	shows?: Show[];
+};
+export type ScheduleData = {
+	engagements: Engagement[];
+};
+
+const exampleEngagements = [
+	{
+		town: "example1",
+		shows: ["2000-01-10T12:00:00", "2000-01-10T16:00:00"],
+	},
+	{
+		town: "example2",
+		timezone: "GMT",
+		shows: [
+			{
+				date: "2000-01-11T12:00:00",
+				placements: [
+					{ location: "Location A", employee: "Employee 1" },
+					{ location: "Location B", employee: "Employee 2" },
+					{ location: "Location C", employee: "Employee 3" },
+				],
+			},
+			{
+				date: "2000-01-11T16:00:00",
+				placements: [
+					{ location: "Location A", employee: "Employee 3" },
+					{ location: "Location B", employee: "Employee 1" },
+					{ location: "Location C", employee: "Employee 2" },
+				],
+			},
+		],
+	},
+];
 
 export default class Schedule {
-	engagements: Engagement[];
-	employees?: string[];
-	locations?: string[];
+	engagements: Engagement[] = exampleEngagements;
+	employees: Employee[] = ["Employee 1", "Employee 2", "Employee 3"] as Employee[];
+	locations: Location[] = ["Location A", "Location B", "Location C"] as Location[];
 
 	constructor();
 	constructor(scheduleData: ScheduleData | string);
-	constructor(scheduleDate: ScheduleData | string, employees: string[], locations: string[]);
+	constructor(scheduleData: ScheduleData | string, employees: string[], locations: string[]);
 
 	constructor(p1?: ScheduleData | string, employees?: string[], locations?: string[]) {
-		if (p1 === undefined && employees === undefined && locations === undefined) {
-			this.engagements = [
-				{
-					town: "example1",
-					shows: ["2000-01-10T12:00:00", "2000-01-10T16:00:00"],
-				},
-				{
-					town: "example2",
-					timezone: "GMT",
-					shows: [
-						{
-							date: "2000-01-11T12:00:00",
-							placements: [
-								{ location: "Location A", employee: "Employee 1" },
-								{ location: "Location B", employee: "Employee 2" },
-								{ location: "Location C", employee: "Employee 3" },
-							],
-						},
-						{
-							date: "2000-01-11T16:00:00",
-							placements: [
-								{ location: "Location A", employee: "Employee 3" },
-								{ location: "Location B", employee: "Employee 1" },
-								{ location: "Location C", employee: "Employee 2" },
-							],
-						},
-					],
-				},
-			];
-			this.employees = ["Employee 1", "Employee 2", "Employee 3"];
-			this.locations = ["Location A", "Location B", "Location C"];
-		} else {
+		if (p1 !== undefined) {
 			// Validate and parse in one step
 			const validated = ScheduleDataSchema.parse(
 				// if p1 is a string, convert to json before validating
 				typeof p1 === "string" ? JSON.parse(p1) : p1,
 			);
 			this.engagements = validated.engagements;
+
 			if (employees !== undefined && locations !== undefined) {
-				this.employees = employees;
-				this.locations = locations;
+				this.employees = employees as Employee[];
+				this.locations = locations as Location[];
 			}
 		}
 	}
@@ -92,13 +109,23 @@ export default class Schedule {
 	/**
 	 * Returns a new schedule with the rotation applied. Leaves original schedule untouched.
 	 * If the schedule has already been rotated, this will ignore any rotated shows.
-	 * Use forceGenerateRotation() to ignore any existing rotation information
+	 * Use forceGenerateRotation() to overwrite any existing rotation information
 	 * @returns The schedule with the rotation
 	 */
-	generateRotation(): Schedule {
-		const rotatedSchedule = new Schedule({ engagements: this.engagements });
+	generateRotation(keepFirstShow?: boolean): Schedule {
+		const rotatedSchedule = new Schedule(
+			{ engagements: this.engagements },
+			this.employees,
+			this.locations,
+		);
+
 		rotatedSchedule.engagements = rotatedSchedule.engagements.map(engagement =>
-			Schedule.rotateOneEngagement(engagement, this.employees, this.locations),
+			Schedule.rotateOneEngagement(
+				engagement,
+				this.employees,
+				this.locations,
+				keepFirstShow ?? false,
+			),
 		);
 		return rotatedSchedule;
 	}
@@ -108,23 +135,36 @@ export default class Schedule {
 	 * Ignores any existing rotation information
 	 * @returns The schedule with the rotation
 	 */
-	forceGenerateRotation(): Schedule {
+	forceGenerateRotation(keepFirstShow?: boolean): Schedule {
 		// remove any information that may exist on this.engagements
-		const rotatedSchedule = new Schedule({
-			engagements: this.engagements,
-		}).getSimpleSchedule();
+		const rotatedSchedule = new Schedule(
+			{
+				engagements: this.engagements,
+			},
+			this.employees,
+			this.locations,
+		).getSimpleSchedule();
+
 		rotatedSchedule.engagements = rotatedSchedule.engagements.map(engagement =>
-			Schedule.rotateOneEngagement(engagement, this.employees, this.locations),
+			Schedule.rotateOneEngagement(
+				engagement,
+				this.employees,
+				this.locations,
+				keepFirstShow ?? false,
+			),
 		);
+
 		return rotatedSchedule;
 	}
 
-	private static rotateOneEngagement(
+	static rotateOneEngagement(
 		engagement: Engagement,
-		_employees: string[] | undefined,
-		_locations: string[] | undefined,
+		employees: Employee[],
+		locations: Location[],
+		keepFirstShow: boolean,
 	): Engagement {
 		const rotatedEngagement = structuredClone(engagement);
+		employees = structuredClone(employees);
 
 		if (!rotatedEngagement.shows || rotatedEngagement.shows.length === 0) {
 			rotatedEngagement.shows = [];
@@ -132,17 +172,41 @@ export default class Schedule {
 		}
 
 		const shows = rotatedEngagement.shows;
-		for (let i = shows.length - 1; i >= 0; i--) {
+		const endIndex = keepFirstShow ? 1 : 0;
+		if (keepFirstShow) {
+			const firstShow = shows[0];
+			if (typeof firstShow === "string") {
+				shows[0] = {
+					date: firstShow,
+					placements: Schedule.mapEmployeeAndLocation(employees, locations),
+				};
+			}
+		}
+		for (let i = shows.length - 1; i >= endIndex; i--) {
 			let show = shows[i];
-			show = {
-				// TODO: fix this
-				date: typeof show === "string" ? show : (show?.date ?? ""),
-				placements: typeof show === "string" || show === undefined ? [] : show.placements,
-			};
-			shows[i] = show;
+			if (typeof show === "string") {
+				show = {
+					date: show,
+					placements: Schedule.mapEmployeeAndLocation(employees, locations),
+				};
+				shows[i] = show;
+			}
+			const last = employees.shift();
+			if (last !== undefined) employees.push(last);
 		}
 
 		return rotatedEngagement;
+	}
+	static mapEmployeeAndLocation(employees: Employee[], locations: Location[]): LocationObject[] {
+		if (employees.length !== locations.length) {
+			throw new Error("employees and locations must be the same length");
+		}
+
+		const locationObjectArray: LocationObject[] = [];
+		for (let i = 0; i < employees.length; i++) {
+			locationObjectArray.push({ location: locations[i]!, employee: employees[i]! });
+		}
+		return locationObjectArray;
 	}
 
 	/**
@@ -150,7 +214,11 @@ export default class Schedule {
 	 * @returns The schedule with only date strings
 	 */
 	getSimpleSchedule(): Schedule {
-		const simpleSchedule = new Schedule({ engagements: this.engagements });
+		const simpleSchedule = new Schedule(
+			{ engagements: this.engagements },
+			this.employees,
+			this.locations,
+		);
 		simpleSchedule.engagements = simpleSchedule.engagements.map(Schedule.simplifyOneEngagement);
 		return simpleSchedule;
 	}
@@ -159,9 +227,10 @@ export default class Schedule {
 	 * @param {Engagement} engagement the engagement to simplify
 	 * @returns a new, simplified engagement
 	 */
-	private static simplifyOneEngagement(engagement: Engagement): Engagement {
+	static simplifyOneEngagement(engagement: Engagement): Engagement {
 		return {
 			town: engagement.town,
+			timezone: engagement.timezone,
 			shows: engagement.shows?.map(show => {
 				if (typeof show === "string") {
 					return show;
