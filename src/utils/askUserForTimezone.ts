@@ -1,24 +1,14 @@
-import * as readline from "node:readline";
 import cityTimezones from "city-timezones";
 
 const cities: Map<string, string> = new Map();
 
-function ask(question: string): Promise<string> {
-	const rl = readline.createInterface({
-		input: process.stdin,
-		output: process.stdout,
-	});
-	rl.on("SIGINT", () => {
-		rl.close();
+async function ask(question: string): Promise<string> {
+	const answer = prompt(question);
+	if (answer === null) {
 		console.log("\nExiting without making any changes.");
 		process.exit(0);
-	});
-	return new Promise(resolve => {
-		rl.question(question, answer => {
-			rl.close();
-			resolve(answer);
-		});
-	});
+	}
+	return answer;
 }
 
 export default async function askUserForTimezone(cityName: string): Promise<string | undefined> {
