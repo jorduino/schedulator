@@ -1,6 +1,6 @@
 import cityTimezones from "city-timezones";
 
-const cities: Map<string, string> = new Map();
+const cache: Map<string, string> = new Map();
 
 async function ask(question: string): Promise<string> {
 	const answer = prompt(question);
@@ -11,23 +11,26 @@ async function ask(question: string): Promise<string> {
 	return answer;
 }
 
-export default async function askUserForTimezone(cityName: string): Promise<string | undefined> {
-	if (cities.has(cityName)) return cities.get(cityName);
+function remember(cityName: string, timezone: string): string {
+	cache.set(cityName, timezone);
+	return timezone;
+}
+
+export default async function askUserForTimezone(cityName: string): Promise<string> {
+	const cached = cache.get(cityName);
+	if (cached !== undefined) return cached;
 
 	const found = cityTimezones.findFromCityStateProvince(cityName);
 
 	if (found.length === 1 && found[0]?.timezone) {
-		const output = found[0].timezone;
-		cities.set(cityName, output);
-		return output;
+		return remember(cityName, found[0].timezone);
 	}
 
 	if (found.length === 0) {
-		const output = await ask(
+		const tz = await ask(
 			`Couldn't find a timezone for "${cityName}", enter one to use (IANA format, e.g. America/New_York): `,
 		);
-		cities.set(cityName, output);
-		return output;
+		return remember(cityName, tz);
 	}
 
 	console.log(`Found multiple timezone options for "${cityName}":`);
@@ -47,14 +50,14 @@ export default async function askUserForTimezone(cityName: string): Promise<stri
 	}
 
 	if (choice === found.length + 1) {
-		const output = await ask("Enter timezone (IANA format, e.g. America/New_York): ");
-		cities.set(cityName, output);
-		return output;
+		const tz = await ask("Enter timezone (IANA format, e.g. America/New_York): ");
+		return remember(cityName, tz);
 	}
 
-	const output = found[choice - 1]?.timezone;
-	if (output) {
-		cities.set(cityName, output);
-		return output;
+	const tz = found[choice - 1]?.timezone;
+	if (!tz) {
+		console.error("Unexpected error: selected entry has no timezone.");
+		process.exit(1);
 	}
+	return remember(cityName, tz);
 }

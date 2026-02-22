@@ -50,7 +50,7 @@
 ## DATA TYPES
 
 - **`Schedule`** (current): the inclusive input/intermediate type. Shows can be either date strings or objects with `date` + `placements`. Timezone is optional. This is the correct shape for user input — there's no need for a more restrictive input type since timezones are valid optional fields.
-- **`RotatedSchedule`** (planned): the fully generated output type. All shows as objects with placements, timezone required on every engagement. Needed to make `createCalendarFile` safe at the type level — without it, that function can't enforce at compile time that every show has placements and every engagement has a timezone.
+- **`RotatedSchedule`**: the fully generated output type. All shows as objects with placements, timezone required on every engagement. Needed to make `createCalendarFile` safe at the type level — without it, that function can't enforce at compile time that every show has placements and every engagement has a timezone.
 
 `getSimpleSchedule()` is an internal utility that strips placements back to date strings before a force-rotation. It doesn't represent a distinct user-facing format and doesn't need its own type.
 
@@ -58,7 +58,7 @@
 
 ## TIMEZONE LOOKUP
 
-Timezone resolution lives in `src/utils/askUserForTimezone.ts` and is intentionally isolated for future GUI replacement. Current implementation uses Node's built-in `readline` (not a third-party library) to avoid Bun compatibility issues with cursor positioning. Responses are cached in a module-level `Map` so each city is only asked once per run. Ctrl+C exits cleanly with a message.
+Timezone resolution lives in `src/utils/askUserForTimezone.ts` and is intentionally isolated and uses async for future GUI replacement. Current implementation uses Bun's built-in `prompt()`. Responses are cached in a module-level `Map` so each city is only asked once per run. Ctrl+C exits cleanly with a message.
 
 Resolution order:
 
@@ -71,5 +71,6 @@ Resolution order:
 
 ## STILL TODO
 
-- [ ] Implement `RotatedSchedule` type when implementing `createCalendarFile` — all shows as `ShowObject`, timezone required on every engagement
+- [ ] Possibly save the timezone cache locally for future runs of the program
 - [ ] Implement `createCalendarFile` — generate a `.ics` file from a `RotatedSchedule`
+- [ ] Create a GUI

@@ -1,4 +1,14 @@
 import { z } from "zod";
+import type {
+	EmployeeString,
+	Engagement,
+	LocationObject,
+	LocationString,
+	RotatedEngagement,
+	RotatedScheduleData,
+	ScheduleData,
+	ShowObject,
+} from "./scheduleTypes";
 import lookupTimezone from "./utils/askUserForTimezone";
 
 const ShowStringSchema = z
@@ -34,29 +44,6 @@ const ScheduleDataSchema: z.ZodType<ScheduleData> = z.object({
 	locations: z.array(z.string()).optional(),
 });
 
-export type ShowString = z.infer<typeof ShowStringSchema>;
-export type EmployeeString = string & { __brand: "Employee" };
-export type LocationString = string & { __brand: "Location" };
-export type LocationObject = {
-	location: string;
-	employee: string;
-};
-export type ShowObject = {
-	date: ShowString;
-	placements: LocationObject[];
-};
-export type Show = ShowString | ShowObject;
-export type Engagement = {
-	town: string;
-	timezone?: string;
-	shows?: Show[];
-};
-export type ScheduleData = {
-	engagements: Engagement[];
-	employees?: string[];
-	locations?: string[];
-};
-
 const exampleEngagements = [
 	{
 		town: "example1",
@@ -86,13 +73,21 @@ const exampleEngagements = [
 	},
 ];
 
+/**
+ * Represents a schedule with engagements, employees, and locations.
+ * Constructed from raw input data (ScheduleData or a JSON string) with Zod validation.
+ * Defaults to example data when constructed with no arguments.
+ */
 export default class Schedule {
 	engagements: Engagement[] = exampleEngagements;
 	employees: EmployeeString[] = ["Employee 1", "Employee 2", "Employee 3"] as EmployeeString[];
 	locations: LocationString[] = ["Location A", "Location B", "Location C"] as LocationString[];
 
+	/** Creates a Schedule using example data. */
 	constructor();
+	/** Creates a Schedule from validated ScheduleData or a JSON string. Throws if validation fails. */
 	constructor(scheduleData: ScheduleData | string);
+	/** Creates a Schedule, overriding the employees and locations from the data with explicit lists. */
 	constructor(scheduleData: ScheduleData | string, employees: string[], locations: string[]);
 
 	constructor(p1?: ScheduleData | string, employees?: string[], locations?: string[]) {
@@ -114,21 +109,15 @@ export default class Schedule {
 	}
 
 	/**
-	 * Returns a new schedule with the rotation applied. Leaves original schedule untouched.
-	 * If the schedule has already been rotated, this will ignore any rotated shows.
-	 * Use forceGenerateRotation() to overwrite any existing rotation information
-	 * @returns The schedule with the rotation
+	 * Returns a new RotatedSchedule with the rotation applied. Leaves the original untouched.
+	 * Shows that already have placements are left as-is — use forceGenerateRotation() to overwrite them.
+	 * @param keepFirstShow If true, locks the first show's assignment to the initial employee order.
 	 */
-	async generateRotation(keepFirstShow?: boolean): Promise<Schedule> {
-		const rotatedSchedule = new Schedule(
-			{ engagements: this.engagements },
-			this.employees,
-			this.locations,
-		);
-		const rotatedEngagements: Engagement[] = [];
-		for (const engagement of rotatedSchedule.engagements) {
+	async generateRotation(keepFirstShow?: boolean): Promise<RotatedSchedule> {
+		const rotatedEngagements: RotatedEngagement[] = [];
+		for (const engagement of this.engagements) {
 			rotatedEngagements.push(
-				await Schedule.rotateOneEngagement(
+				await rotateOneEngagement(
 					engagement,
 					this.employees,
 					this.locations,
@@ -136,129 +125,143 @@ export default class Schedule {
 				),
 			);
 		}
-		rotatedSchedule.engagements = rotatedEngagements;
-		return rotatedSchedule;
+		return new RotatedSchedule({
+			engagements: rotatedEngagements,
+			employees: this.employees,
+			locations: this.locations,
+		});
 	}
 
 	/**
-	 * Returns a new schedule with the rotation applied. Leaves original schedule untouched.
-	 * Ignores any existing rotation information
-	 * @returns The schedule with the rotation
+	 * Returns a new RotatedSchedule with the rotation applied. Leaves the original untouched.
+	 * Strips all existing placements before rotating, ignoring any manual overrides.
+	 * @param keepFirstShow If true, locks the first show's assignment to the initial employee order.
 	 */
-	async forceGenerateRotation(keepFirstShow?: boolean): Promise<Schedule> {
-		// remove any information that may exist on this.engagements
-		const rotatedSchedule = new Schedule(
-			{
-				engagements: this.engagements,
-			},
-			this.employees,
-			this.locations,
-		).getSimpleSchedule();
-
-		const rotatedEngagements: Engagement[] = [];
-		for (const engagement of rotatedSchedule.engagements) {
-			rotatedEngagements.push(
-				await Schedule.rotateOneEngagement(
-					engagement,
-					this.employees,
-					this.locations,
-					keepFirstShow ?? false,
-				),
-			);
-		}
-		rotatedSchedule.engagements = rotatedEngagements;
+	async forceGenerateRotation(keepFirstShow?: boolean): Promise<RotatedSchedule> {
+		// remove any information that may exist on this.engagements and rotate
+		const rotatedSchedule = await this.getSimpleSchedule().generateRotation(keepFirstShow);
 		return rotatedSchedule;
 	}
 
-	static async rotateOneEngagement(
-		engagement: Engagement,
-		employees: EmployeeString[],
-		locations: LocationString[],
-		keepFirstShow: boolean,
-	): Promise<Engagement> {
-		const rotatedEngagement = structuredClone(engagement);
-		employees = structuredClone(employees);
-
-		if (!rotatedEngagement.shows || rotatedEngagement.shows.length === 0) {
-			rotatedEngagement.shows = [];
-			return rotatedEngagement;
-		}
-		if (!rotatedEngagement.timezone) {
-			rotatedEngagement.timezone = await lookupTimezone(engagement.town);
-		}
-		const shows = rotatedEngagement.shows;
-		const endIndex = keepFirstShow ? 1 : 0;
-		if (keepFirstShow) {
-			const firstShow = shows[0];
-			if (typeof firstShow === "string") {
-				shows[0] = {
-					date: firstShow,
-					placements: Schedule.mapEmployeeAndLocation(employees, locations),
-				};
-			}
-		}
-		for (let i = shows.length - 1; i >= endIndex; i--) {
-			let show = shows[i];
-			if (typeof show === "string") {
-				show = {
-					date: show,
-					placements: Schedule.mapEmployeeAndLocation(employees, locations),
-				};
-				shows[i] = show;
-			}
-			const last = employees.shift();
-			if (last !== undefined) employees.push(last);
-		}
-
-		return rotatedEngagement;
-	}
-	static mapEmployeeAndLocation(
-		employees: EmployeeString[],
-		locations: LocationString[],
-	): LocationObject[] {
-		if (employees.length !== locations.length) {
-			throw new Error("employees and locations must be the same length");
-		}
-
-		const result: LocationObject[] = [];
-		for (const [i, location] of locations.entries()) {
-			const employee = employees[i];
-			if (employee !== undefined) {
-				result.push({ location, employee });
-			}
-		}
-		return result;
-	}
-
-	/**
-	 * Returns a new schedule without any rotation information
-	 * @returns The schedule with only date strings
-	 */
+	/** Returns a new Schedule with all shows reduced to date strings, stripping any placements. */
 	getSimpleSchedule(): Schedule {
 		const simpleSchedule = new Schedule(
 			{ engagements: this.engagements },
 			this.employees,
 			this.locations,
 		);
-		simpleSchedule.engagements = simpleSchedule.engagements.map(Schedule.simplifyOneEngagement);
+		simpleSchedule.engagements = simpleSchedule.engagements.map(simplifyOneEngagement);
 		return simpleSchedule;
 	}
-	/**
-	 * Returns a new engagement that has been simplified
-	 * @param {Engagement} engagement the engagement to simplify
-	 * @returns a new, simplified engagement
-	 */
-	static simplifyOneEngagement(engagement: Engagement): Engagement {
-		return {
-			town: engagement.town,
-			timezone: engagement.timezone,
-			shows: engagement.shows?.map(show => {
-				if (typeof show === "string") {
-					return show;
-				} else {
-					return show.date;
-				}
-			}),
-		};
+}
+
+/**
+ * The fully rotated output type. All shows are ShowObjects with placements, and every
+ * engagement has a timezone. Produced by Schedule.generateRotation() or forceGenerateRotation().
+ */
+export class RotatedSchedule extends Schedule {
+	declare engagements: RotatedEngagement[];
+	/** Creates a RotatedSchedule directly from pre-built RotatedScheduleData. */
+	constructor(scheduleData: RotatedScheduleData) {
+		super({ engagements: [] });
+		this.engagements = scheduleData.engagements;
+		this.employees = scheduleData.employees as EmployeeString[];
+		this.locations = scheduleData.locations as LocationString[];
 	}
+}
+
+/**
+ * Applies the rotation algorithm to a single engagement.
+ * Rotation is computed backwards from the last show — the last show gets the initial employee
+ * order, and each earlier show rotates forward by one step relative to the show after it.
+ * Shows that already have placements are left as-is.
+ * Prompts the user for a timezone if the engagement has none and it can't be inferred.
+ * @param engagement The engagement to rotate.
+ * @param employees The ordered list of employees.
+ * @param locations The ordered list of locations.
+ * @param keepFirstShow If true, locks the first show to the initial employee order before rotating the rest.
+ */
+export async function rotateOneEngagement(
+	engagement: Engagement,
+	employees: EmployeeString[],
+	locations: LocationString[],
+	keepFirstShow: boolean,
+): Promise<RotatedEngagement> {
+	const rotatedEngagement = structuredClone(engagement);
+	employees = structuredClone(employees);
+	locations = structuredClone(locations);
+
+	const timezone = rotatedEngagement.timezone ?? (await lookupTimezone(engagement.town));
+
+	if (!rotatedEngagement.shows || rotatedEngagement.shows.length === 0) {
+		return { town: rotatedEngagement.town, timezone, shows: [] };
+	}
+
+	const shows = rotatedEngagement.shows;
+	const endIndex = keepFirstShow ? 1 : 0;
+	if (keepFirstShow) {
+		const firstShow = shows[0];
+		if (typeof firstShow === "string") {
+			shows[0] = {
+				date: firstShow,
+				placements: mapEmployeeAndLocation(employees, locations),
+			};
+		}
+	}
+	for (let i = shows.length - 1; i >= endIndex; i--) {
+		let show = shows[i];
+		if (typeof show === "string") {
+			show = {
+				date: show,
+				placements: mapEmployeeAndLocation(employees, locations),
+			};
+			shows[i] = show;
+		}
+		const last = employees.shift();
+		if (last !== undefined) employees.push(last);
+	}
+
+	return { town: rotatedEngagement.town, timezone, shows: shows as ShowObject[] };
+}
+
+/**
+ * Pairs each employee with a location by index, producing a placements array.
+ * @param employees Ordered list of employees.
+ * @param locations Ordered list of locations. Must be the same length as employees.
+ * @throws If employees and locations have different lengths.
+ */
+export function mapEmployeeAndLocation(
+	employees: EmployeeString[],
+	locations: LocationString[],
+): LocationObject[] {
+	if (employees.length !== locations.length) {
+		throw new Error("employees and locations must be the same length");
+	}
+
+	const result: LocationObject[] = [];
+	for (const [i, location] of locations.entries()) {
+		const employee = employees[i];
+		if (employee !== undefined) {
+			result.push({ location, employee });
+		}
+	}
+	return result;
+}
+
+/**
+ * Returns a copy of an engagement with all shows reduced to date strings, stripping placements.
+ * @param engagement The engagement to simplify.
+ */
+export function simplifyOneEngagement(engagement: Engagement): Engagement {
+	return {
+		town: engagement.town,
+		timezone: engagement.timezone,
+		shows: engagement.shows?.map(show => {
+			if (typeof show === "string") {
+				return show;
+			} else {
+				return show.date;
+			}
+		}),
+	};
 }

@@ -1,5 +1,5 @@
 import { expect, test } from "bun:test";
-import Schedule from "../src/schedule";
+import Schedule, { mapEmployeeAndLocation } from "../src/schedule";
 
 // test("rotate should throw with no shows", () => {
 // 	//todo rewrite this
@@ -11,7 +11,7 @@ test("map employee and location works", () => {
 	const schedule = new Schedule();
 	const employees = schedule.employees;
 	const locations = schedule.locations;
-	const locationObjectArray = Schedule.mapEmployeeAndLocation(employees, locations);
+	const locationObjectArray = mapEmployeeAndLocation(employees, locations);
 
 	expect(locationObjectArray.length).toBe(employees.length);
 	expect(locationObjectArray[0]?.location).toBe(locations[0]);
