@@ -4,7 +4,10 @@ import cityTimezones from "city-timezones";
 const cities: Map<string, string> = new Map();
 
 function ask(question: string): Promise<string> {
-	const rl = readline.createInterface({ input: process.stdin, output: process.stdout });
+	const rl = readline.createInterface({
+		input: process.stdin,
+		output: process.stdout,
+	});
 	rl.on("SIGINT", () => {
 		rl.close();
 		console.log("\nExiting without making any changes.");
@@ -48,7 +51,7 @@ export default async function askUserForTimezone(cityName: string): Promise<stri
 	const raw = await ask(`Enter the number of your choice (1-${found.length + 1}): `);
 	const choice = parseInt(raw, 10);
 
-	if (isNaN(choice) || choice < 1 || choice > found.length + 1) {
+	if (Number.isNaN(choice) || choice < 1 || choice > found.length + 1) {
 		console.error("Invalid choice.");
 		process.exit(1);
 	}
