@@ -10,7 +10,7 @@ import type {
 	ScheduleData,
 	ShowObject,
 } from "./scheduleTypes";
-import Timezones from "./utils/askUserForTimezone";
+import Timezones from "./utils/Timezones";
 
 const ShowStringSchema = z
 	.string()
