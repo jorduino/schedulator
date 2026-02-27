@@ -58,11 +58,13 @@
 
 ## TIMEZONE LOOKUP
 
-Timezone resolution lives in `src/utils/askUserForTimezone.ts` and is intentionally isolated and uses async for future GUI replacement. Current implementation uses Bun's built-in `prompt()`. Responses are cached in a module-level `Map` so each city is only asked once per run. Ctrl+C exits cleanly with a message.
+Timezone resolution lives in `src/utils/askUserForTimezone.ts` as the `Timezones` class, intentionally isolated and async for future GUI replacement. Current implementation uses Bun's built-in `prompt()`. Responses are cached in `Timezones.cache` (a `Map`) so each city is only asked once per run. Ctrl+C exits cleanly with a message.
+
+Pass an `extCachePath` to the `Schedule` constructor to persist the cache to disk between runs. `readCache()` is called at the start of `generateRotation` and `writeCache()` at the end.
 
 Resolution order:
 
-1. City found in cache → return immediately
+1. City found in in-memory cache → return immediately
 2. Exactly one match in `city-timezones` → return automatically
 3. Multiple matches → numbered list, user picks or enters their own
 4. No matches → user enters a timezone string manually
@@ -71,6 +73,5 @@ Resolution order:
 
 ## STILL TODO
 
-- [ ] Possibly save the timezone cache locally for future runs of the program
 - [ ] Implement `createCalendarFile` — generate a `.ics` file from a `RotatedSchedule`
 - [ ] Create a GUI

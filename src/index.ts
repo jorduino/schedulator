@@ -1,14 +1,14 @@
-import { existsSync } from "node:fs";
 import * as fs from "node:fs/promises";
 import Schedule from "./schedule";
 
 const scheduleLocation = "./schedule.json";
 const employees = ["Employee 1", "Employee 3", "Employee 2"];
 const locations = ["Location 1", "Location 2", "Location 3"];
+const tzCachePath = "./src/cache.json";
 let schedule: Schedule;
 
 // if there is no schedule, tell the user to make one and exit
-if (!existsSync(scheduleLocation)) {
+if (!(await fs.exists(scheduleLocation))) {
 	console.error("schedule.json not found! Please make one using the following format:");
 	console.log(JSON.stringify(new Schedule(), null, 2));
 	process.exit();
@@ -17,7 +17,7 @@ if (!existsSync(scheduleLocation)) {
 try {
 	const scheduleData = await fs.readFile(scheduleLocation, { encoding: "utf8" });
 	console.log("Got the file");
-	schedule = new Schedule(scheduleData, employees, locations);
+	schedule = new Schedule(scheduleData, employees, locations, tzCachePath);
 	console.log("Schedule got parsed");
 } catch (err) {
 	console.error(err);

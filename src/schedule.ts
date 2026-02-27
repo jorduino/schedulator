@@ -1,3 +1,4 @@
+import type { PathLike } from "node:fs";
 import { z } from "zod";
 import type {
 	EmployeeString,
@@ -9,7 +10,7 @@ import type {
 	ScheduleData,
 	ShowObject,
 } from "./scheduleTypes";
-import lookupTimezone from "./utils/askUserForTimezone";
+import Timezones from "./utils/askUserForTimezone";
 
 const ShowStringSchema = z
 	.string()
@@ -82,6 +83,7 @@ export default class Schedule {
 	engagements: Engagement[] = exampleEngagements;
 	employees: EmployeeString[] = ["Employee 1", "Employee 2", "Employee 3"] as EmployeeString[];
 	locations: LocationString[] = ["Location A", "Location B", "Location C"] as LocationString[];
+	timezones: Timezones = new Timezones();
 
 	/** Creates a Schedule using example data. */
 	constructor();
@@ -89,8 +91,19 @@ export default class Schedule {
 	constructor(scheduleData: ScheduleData | string);
 	/** Creates a Schedule, overriding the employees and locations from the data with explicit lists. */
 	constructor(scheduleData: ScheduleData | string, employees: string[], locations: string[]);
-
-	constructor(p1?: ScheduleData | string, employees?: string[], locations?: string[]) {
+	/** Creates a Schedule, listing a cache path to save timezone info */
+	constructor(
+		scheduleData: ScheduleData | string,
+		employees: string[],
+		locations: string[],
+		TimezoneCachePath?: PathLike,
+	);
+	constructor(
+		p1?: ScheduleData | string,
+		employees?: string[],
+		locations?: string[],
+		timezoneCachePath?: PathLike,
+	) {
 		if (p1 !== undefined) {
 			// Validate and parse in one step
 			const validated = ScheduleDataSchema.parse(
@@ -105,6 +118,7 @@ export default class Schedule {
 				this.employees = employees as EmployeeString[];
 				this.locations = locations as LocationString[];
 			}
+			this.timezones.extCachePath = timezoneCachePath;
 		}
 	}
 
@@ -114,6 +128,11 @@ export default class Schedule {
 	 * @param keepFirstShow If true, locks the first show's assignment to the initial employee order.
 	 */
 	async generateRotation(keepFirstShow?: boolean): Promise<RotatedSchedule> {
+		try {
+			await this.timezones.readCache();
+		} catch (e) {
+			console.warn(`WARN: Couldn't read timezone cache: ${e}\nignoring`);
+		}
 		const rotatedEngagements: RotatedEngagement[] = [];
 		for (const engagement of this.engagements) {
 			rotatedEngagements.push(
@@ -122,8 +141,14 @@ export default class Schedule {
 					this.employees,
 					this.locations,
 					keepFirstShow ?? false,
+					this.timezones,
 				),
 			);
+		}
+		try {
+			await this.timezones.writeCache();
+		} catch (e) {
+			console.warn(`WARN: Couldn't write timezone cache: ${e}\n ignoring`);
 		}
 		return new RotatedSchedule({
 			engagements: rotatedEngagements,
@@ -149,8 +174,10 @@ export default class Schedule {
 			{ engagements: this.engagements },
 			this.employees,
 			this.locations,
+			this.timezones.extCachePath,
 		);
 		simpleSchedule.engagements = simpleSchedule.engagements.map(simplifyOneEngagement);
+		simpleSchedule.timezones.cache = new Map([...this.timezones.cache]);
 		return simpleSchedule;
 	}
 }
@@ -186,12 +213,14 @@ export async function rotateOneEngagement(
 	employees: EmployeeString[],
 	locations: LocationString[],
 	keepFirstShow: boolean,
+	timezones: Timezones,
 ): Promise<RotatedEngagement> {
 	const rotatedEngagement = structuredClone(engagement);
 	employees = structuredClone(employees);
 	locations = structuredClone(locations);
 
-	const timezone = rotatedEngagement.timezone ?? (await lookupTimezone(engagement.town));
+	const timezone =
+		rotatedEngagement.timezone ?? (await timezones.askUserForTimezone(engagement.town));
 
 	if (!rotatedEngagement.shows || rotatedEngagement.shows.length === 0) {
 		return { town: rotatedEngagement.town, timezone, shows: [] };
