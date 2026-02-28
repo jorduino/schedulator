@@ -1,5 +1,6 @@
 import type { PathLike } from "node:fs";
 import { z } from "zod";
+import Timezones from "../timezones";
 import type {
 	EmployeeString,
 	Engagement,
@@ -9,8 +10,7 @@ import type {
 	RotatedScheduleData,
 	ScheduleData,
 	ShowObject,
-} from "./scheduleTypes";
-import Timezones from "./utils/Timezones";
+} from "./types";
 
 const ShowStringSchema = z
 	.string()

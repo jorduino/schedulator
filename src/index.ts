@@ -1,10 +1,10 @@
 import * as fs from "node:fs/promises";
-import Schedule from "./schedule";
+import Schedule from "./schedule/schedule";
 
 const scheduleLocation = "./schedule.json";
 const employees = ["Employee 1", "Employee 3", "Employee 2"];
 const locations = ["Location 1", "Location 2", "Location 3"];
-const tzCachePath = "./src/cache.json";
+const tzCachePath = "./cache.json";
 let schedule: Schedule;
 
 // if there is no schedule, tell the user to make one and exit

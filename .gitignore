@@ -92,6 +92,6 @@ typings/
 out/
 
 # Project Specific Files
-client_secret.json
 rotation.json
 calendar.csv
+cache.json

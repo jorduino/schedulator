@@ -1,5 +1,5 @@
 import { expect, test } from "bun:test";
-import Schedule, { mapEmployeeAndLocation } from "../src/schedule";
+import Schedule, { mapEmployeeAndLocation } from "../src/schedule/schedule";
 
 // test("rotate should throw with no shows", () => {
 // 	//todo rewrite this

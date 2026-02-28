@@ -10,7 +10,14 @@
 		"attributePosition": "auto"
 	},
 	"files": {
-		"includes": ["**", "!**/node_modules", "!**/package.json", "!**/bun.lock", "!**/out"]
+		"includes": [
+			"**",
+			"!**/node_modules",
+			"!**/package.json",
+			"!**/bun.lock",
+			"!**/out",
+			"!**/cache.json"
+		]
 	},
 	"assist": { "actions": { "source": { "organizeImports": "on" } } },
 	"linter": {
