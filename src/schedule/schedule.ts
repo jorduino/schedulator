@@ -115,6 +115,7 @@ export default class Schedule {
 	) {
 		if (p1 !== undefined) {
 			// Validate and parse in one step
+
 			const validated = ScheduleDataSchema.parse(
 				// if p1 is a string, convert to json before validating
 				typeof p1 === "string" ? JSON.parse(p1) : p1,

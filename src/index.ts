@@ -16,7 +16,9 @@ let schedule: Schedule;
 
 // if there is no schedule, tell the user to make one and exit
 if (!(await fs.exists(scheduleLocation))) {
-	await fs.writeFile(scheduleLocation, JSON.stringify(new Schedule(), null, 2));
+	const tempSchedule = new Schedule();
+	tempSchedule.timezones.extCachePath = "./cache.json";
+	await fs.writeFile(scheduleLocation, JSON.stringify(tempSchedule, null, 2));
 	const scheduleFullLocation = join(__dirname, scheduleLocation);
 	console.error(
 		`ERROR: schedule.json not found! Creating template, please modify '${scheduleFullLocation}'.\nRun program again once data is in schedule.json`,
