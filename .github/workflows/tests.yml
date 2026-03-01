@@ -8,7 +8,7 @@ permissions:
 
 jobs:
     build-and-test:
-        name: Build & Test Extension
+        name: Build & Test
 
         runs-on: ubuntu-latest
 
