@@ -20,7 +20,8 @@
 				// Define suggested settings for the dev container
 				"resmon.show.battery": false,
 				"resmon.show.cpufreq": false,
-				"workbench.iconTheme": "material-icon-theme" // Use the theme's name
+				"workbench.colorTheme": "Monokai Pro",
+				"workbench.iconTheme": "material-icon-theme"
 			},
 			"extensions": [
 				"biomejs.biome",
@@ -31,7 +32,8 @@
 				"PKief.material-icon-theme",
 				"aaron-bond.better-comments",
 				"af4jm.vscode-icalendar",
-				"monokai.theme-monokai-pro-vscode"
+				"monokai.theme-monokai-pro-vscode",
+				"YoavBls.pretty-ts-errors"
 			]
 		}
 	}
