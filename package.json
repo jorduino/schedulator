@@ -36,6 +36,7 @@
 		"lint": "bun biome check",
 		"markdownlint": "markdownlint '**/*.md'",
 		"prepare": "husky",
+		"build": "bun build --compile --minify src/index.ts --outfile dist/schedulator",
 		"start": "bun src/index.ts",
 		"test": "bun test"
 	},
