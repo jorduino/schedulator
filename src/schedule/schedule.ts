@@ -43,6 +43,17 @@ const ScheduleDataSchema: z.ZodType<ScheduleData> = z.object({
 	),
 	employees: z.array(z.string()).optional(),
 	locations: z.array(z.string()).optional(),
+	timezones: z
+		.union([
+			z.instanceof(Timezones),
+			z
+				.object({
+					cache: z.array(z.tuple([z.string(), z.string()])),
+					extCachePath: z.string().optional(),
+				})
+				.transform(data => new Timezones(data.extCachePath, new Map(data.cache))),
+		])
+		.optional(),
 });
 
 const exampleEngagements = [
@@ -52,7 +63,7 @@ const exampleEngagements = [
 	},
 	{
 		town: "example2",
-		timezone: "GMT",
+		timezone: "Europe/London",
 		shows: [
 			{
 				date: "2000-01-11T12:00:00",
@@ -89,8 +100,6 @@ export default class Schedule {
 	constructor();
 	/** Creates a Schedule from validated ScheduleData or a JSON string. Throws if validation fails. */
 	constructor(scheduleData: ScheduleData | string);
-	/** Creates a Schedule, overriding the employees and locations from the data with explicit lists. */
-	constructor(scheduleData: ScheduleData | string, employees: string[], locations: string[]);
 	/** Creates a Schedule, listing a cache path to save timezone info */
 	constructor(
 		scheduleData: ScheduleData | string,
@@ -118,8 +127,10 @@ export default class Schedule {
 				this.employees = employees as EmployeeString[];
 				this.locations = locations as LocationString[];
 			}
-			this.timezones.extCachePath = timezoneCachePath;
+			if (validated.timezones) this.timezones = validated.timezones;
 		}
+
+		if (timezoneCachePath !== undefined) this.timezones.extCachePath = timezoneCachePath;
 	}
 
 	/**
@@ -154,6 +165,7 @@ export default class Schedule {
 			engagements: rotatedEngagements,
 			employees: this.employees,
 			locations: this.locations,
+			timezones: this.timezones,
 		});
 	}
 
@@ -163,21 +175,18 @@ export default class Schedule {
 	 * @param keepFirstShow If true, locks the first show's assignment to the initial employee order.
 	 */
 	async forceGenerateRotation(keepFirstShow?: boolean): Promise<RotatedSchedule> {
-		// remove any information that may exist on this.engagements and rotate
-		const rotatedSchedule = await this.getSimpleSchedule().generateRotation(keepFirstShow);
-		return rotatedSchedule;
+		return this.getSimpleSchedule().generateRotation(keepFirstShow);
 	}
 
 	/** Returns a new Schedule with all shows reduced to date strings, stripping any placements. */
 	getSimpleSchedule(): Schedule {
-		const simpleSchedule = new Schedule(
-			{ engagements: this.engagements },
-			this.employees,
-			this.locations,
-			this.timezones.extCachePath,
-		);
+		const simpleSchedule = new Schedule({
+			engagements: this.engagements,
+			employees: this.employees,
+			locations: this.locations,
+		});
 		simpleSchedule.engagements = simpleSchedule.engagements.map(simplifyOneEngagement);
-		simpleSchedule.timezones.cache = new Map([...this.timezones.cache]);
+		simpleSchedule.timezones = new Timezones(this.timezones.extCachePath, this.timezones.cache);
 		return simpleSchedule;
 	}
 }
@@ -194,6 +203,7 @@ export class RotatedSchedule extends Schedule {
 		this.engagements = scheduleData.engagements;
 		this.employees = scheduleData.employees as EmployeeString[];
 		this.locations = scheduleData.locations as LocationString[];
+		this.timezones = scheduleData.timezones;
 	}
 }
 
@@ -267,14 +277,7 @@ export function mapEmployeeAndLocation(
 		throw new Error("employees and locations must be the same length");
 	}
 
-	const result: LocationObject[] = [];
-	for (const [i, location] of locations.entries()) {
-		const employee = employees[i];
-		if (employee !== undefined) {
-			result.push({ location, employee });
-		}
-	}
-	return result;
+	return locations.map((location, i) => ({ location, employee: employees[i] as EmployeeString }));
 }
 
 /**
@@ -285,12 +288,6 @@ export function simplifyOneEngagement(engagement: Engagement): Engagement {
 	return {
 		town: engagement.town,
 		timezone: engagement.timezone,
-		shows: engagement.shows?.map(show => {
-			if (typeof show === "string") {
-				return show;
-			} else {
-				return show.date;
-			}
-		}),
+		shows: engagement.shows?.map(show => (typeof show === "string" ? show : show.date)),
 	};
 }

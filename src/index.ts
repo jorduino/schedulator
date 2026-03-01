@@ -2,6 +2,7 @@ import * as fs from "node:fs/promises"; // Use fs/promises for async operations
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import Schedule from "./schedule/schedule";
+import Timezones from "./timezones";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -26,6 +27,7 @@ if (!(await fs.exists(scheduleLocation))) {
 try {
 	const scheduleData = await fs.readFile(scheduleLocation, { encoding: "utf8" });
 	console.log("Got the file");
+	await new Timezones(tzCachePath).clearCache();
 	schedule = new Schedule(scheduleData, employees, locations, tzCachePath);
 	console.log("Schedule got parsed");
 } catch (err) {

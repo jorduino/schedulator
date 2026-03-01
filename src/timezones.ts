@@ -8,11 +8,10 @@ export default class Timezones {
 	cache: TZCache;
 	extCachePath?: PathLike;
 
-	constructor();
-	constructor(extCachePath: PathLike);
-	constructor(extCachePath: PathLike, cache: Map<unknown, unknown>);
+	constructor(extCachePath?: PathLike);
+	constructor(extCachePath: PathLike | undefined, cache: Map<unknown, unknown>);
 
-	constructor(extCachePath?: PathLike, cache?: Map<unknown, unknown>) {
+	constructor(extCachePath?: PathLike | undefined, cache?: Map<unknown, unknown>) {
 		this.extCachePath = extCachePath;
 		if (cache) {
 			if (!Timezones.isCacheValid(cache)) {
@@ -124,6 +123,12 @@ export default class Timezones {
 	public async clearCache(): Promise<void> {
 		this.cache = new Map([]);
 		await this.writeCache();
+	}
+	public toJSON() {
+		return {
+			extCachePath: this.extCachePath !== undefined ? String(this.extCachePath) : undefined,
+			cache: [...this.cache], // Map → [["city", "tz"], ...]
+		};
 	}
 }
 
