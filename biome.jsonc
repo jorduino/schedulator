@@ -1,5 +1,5 @@
 {
-	"$schema": "https://biomejs.dev/schemas/2.4.3/schema.json",
+	"$schema": "https://biomejs.dev/schemas/2.4.4/schema.json",
 	"formatter": {
 		"enabled": true,
 		"formatWithErrors": false,
@@ -16,7 +16,8 @@
 			"!**/package.json",
 			"!**/bun.lock",
 			"!**/out",
-			"!**/cache.json"
+			"!**/cache.json",
+			"!**/schedule.json"
 		]
 	},
 	"assist": { "actions": { "source": { "organizeImports": "on" } } },
