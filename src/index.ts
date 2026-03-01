@@ -1,16 +1,16 @@
 import * as fs from "node:fs/promises"; // Use fs/promises for async operations
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
+import createCalendarFile from "./calendarFile";
 import Schedule from "./schedule/schedule";
-import Timezones from "./timezones";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
 const scheduleLocation = "./schedule.json";
-const employees = ["Employee 1", "Employee 3", "Employee 2"];
-const locations = ["Location 1", "Location 2", "Location 3"];
-const tzCachePath = "./cache.json";
+// const employees = ["Employee 1", "Employee 3", "Employee 2"];
+// const locations = ["Location 1", "Location 2", "Location 3"];
+// const tzCachePath = "./cache.json";
 
 let schedule: Schedule;
 
@@ -27,8 +27,7 @@ if (!(await fs.exists(scheduleLocation))) {
 try {
 	const scheduleData = await fs.readFile(scheduleLocation, { encoding: "utf8" });
 	console.log("Got the file");
-	await new Timezones(tzCachePath).clearCache();
-	schedule = new Schedule(scheduleData, employees, locations, tzCachePath);
+	schedule = new Schedule(scheduleData);
 	console.log("Schedule got parsed");
 } catch (err) {
 	console.error(err);
@@ -38,12 +37,16 @@ if (!(await fs.exists("./out"))) {
 	await fs.mkdir("./out");
 }
 
-const rotated = JSON.stringify(await schedule.generateRotation(true), null, 2);
-const forceRotated = JSON.stringify(await schedule.forceGenerateRotation(true), null, 2);
-const simple = JSON.stringify(schedule.getSimpleSchedule(), null, 2);
+const rotated = await schedule.generateRotation(true);
+const forceRotated = await schedule.forceGenerateRotation(true);
+const simple = schedule.getSimpleSchedule();
+const rotatedJSON = JSON.stringify(rotated, null, 2);
+const forceRotatedJSON = JSON.stringify(forceRotated, null, 2);
+const simpleJSON = JSON.stringify(simple, null, 2);
 
-await fs.writeFile("./out/Schedule-Rotated.json", rotated);
-await fs.writeFile("./out/Schedule-Force-Rotated.json", forceRotated);
-await fs.writeFile("./out/Schedule-Simple.json", simple);
+await fs.writeFile("./out/Schedule-Rotated.json", rotatedJSON);
+await fs.writeFile("./out/Schedule-Force-Rotated.json", forceRotatedJSON);
+await fs.writeFile("./out/Schedule-Simple.json", simpleJSON);
+await fs.writeFile("./out/Calendar.ics", createCalendarFile(forceRotated));
 
 console.log("Wrote some stuff");

@@ -73,5 +73,6 @@ Resolution order:
 
 ## STILL TODO
 
-- [ ] Implement `createCalendarFile` — generate a `.ics` file from a `RotatedSchedule`
+- [x] Implement `createCalendarFile` — done
+- [ ] **UID persistence** — UIDs are currently derived from `date:town` hash at generation time. Eventually, generated UIDs should be written back into the schedule JSON so that re-importing an updated schedule updates existing calendar events rather than duplicating them. An ICS→schedule function (or an import step) would receive the persisted UID from a previously exported file and attach it back to the matching show object.
 - [ ] Create a GUI

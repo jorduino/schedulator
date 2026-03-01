@@ -20,7 +20,7 @@ Each calendar event should also have the following things not necessarily visibl
 - **One event per show, or one event per employee per show?**
   - One per show: all placements in one event, simpler, but everyone sees everyone else's assignment
   - One per employee: each person only sees their own event — cleaner for individual calendars, but 3x the events
-- **Show duration**: not in the data — needs a default (e.g. 2.5 hours) or a configurable field added to `RotatedEngagement`
+- **Show duration**: not in the data — needs a default (2 hours) or a configurable field added to `RotatedEngagement`
 - **`createCalendarJSON` vs `scheduleToCalendarJSON`**: these appear to be duplicates — one should be removed
 
 ---
@@ -94,19 +94,19 @@ function createCalendarFile(calendarJSON)
   lines.push("CALSCALE:GREGORIAN")
 
   for each event in calendarJSON.events
-    placementSummary = join(event.placements, ", ") as "Employee@Location"
-    placementDetail  = join(event.placements, "\n") as "Employee: Location"
+    placementSummary = join(event.placements, ", ") as "Location:Employee"
+    placementDetail  = join(event.placements, "\n") as "Location:Employee"
 
     lines.push("BEGIN:VEVENT")
     lines.push("DTSTART;TZID=<event.timezone>:<event.date formatted as YYYYMMDDTHHmmss>")
     lines.push("DTEND;TZID=<event.timezone>:<start + duration>")
-    lines.push("SUMMARY:<event.cityName> - <show time> - <placementSummary>")
+    lines.push("SUMMARY:<event.cityName> - <show time>: <placementSummary>")
     lines.push("DESCRIPTION:<placementDetail>")
     lines.push("LOCATION:<event.cityName>")
     lines.push("END:VEVENT")
 
   lines.push("END:VCALENDAR")
-  return join(lines, "\r\n")   // ICS spec requires CRLF line endings
+  return join(lines, "\r\n")   // ICS spec requires CRLF line endings (RFC 5545)
 ```
 
 ---
