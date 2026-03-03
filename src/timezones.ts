@@ -1,17 +1,15 @@
-import type { PathLike } from "node:fs";
-import * as fs from "node:fs/promises";
 import cityTimezones from "city-timezones";
 
 type TZCache = Map<string, string>;
 
 export default class Timezones {
 	cache: TZCache;
-	extCachePath?: PathLike;
+	extCachePath?: string;
 
-	constructor(extCachePath?: PathLike);
-	constructor(extCachePath: PathLike | undefined, cache: Map<unknown, unknown>);
+	constructor(extCachePath?: string);
+	constructor(extCachePath: string | undefined, cache: Map<unknown, unknown>);
 
-	constructor(extCachePath?: PathLike | undefined, cache?: Map<unknown, unknown>) {
+	constructor(extCachePath?: string | undefined, cache?: Map<unknown, unknown>) {
 		this.extCachePath = extCachePath;
 		if (cache) {
 			if (!Timezones.isCacheValid(cache)) {
@@ -95,7 +93,7 @@ export default class Timezones {
 				// not sure if we should read before write, could read bad data or could overwrite data
 				// probably want to allow user to decide whether to read before to allow option of overwrite
 				// await this.readCache();
-				await fs.writeFile(this.extCachePath, JSON.stringify([...this.cache]));
+				await Bun.write(this.extCachePath, JSON.stringify([...this.cache]));
 			} catch (e) {
 				throw new Error(`Error writing cache:\n${e}`);
 			}
@@ -107,9 +105,7 @@ export default class Timezones {
 			throw new Error("Tried to read Timezone cache with no external save path");
 		} else {
 			try {
-				const cacheData = JSON.parse(
-					await fs.readFile(this.extCachePath, { encoding: "utf-8" }),
-				);
+				const cacheData = JSON.parse(await Bun.file(this.extCachePath).text());
 				const tempMap = new Map([...cacheData]);
 				if (!Timezones.isCacheValid(tempMap)) {
 					throw new Error("Tried to read invalid cache");

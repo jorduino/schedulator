@@ -1,4 +1,3 @@
-import type { PathLike } from "node:fs";
 import { z } from "zod";
 import Timezones from "../timezones";
 import type {
@@ -105,13 +104,13 @@ export default class Schedule {
 		scheduleData: ScheduleData | string,
 		employees: string[],
 		locations: string[],
-		TimezoneCachePath?: PathLike,
+		TimezoneCachePath?: string,
 	);
 	constructor(
 		p1?: ScheduleData | string,
 		employees?: string[],
 		locations?: string[],
-		timezoneCachePath?: PathLike,
+		timezoneCachePath?: string,
 	) {
 		if (p1 !== undefined) {
 			// Validate and parse in one step
