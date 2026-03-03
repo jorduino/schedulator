@@ -1,18 +1,60 @@
+import { parseArgs } from "util";
 import createCalendarFile from "./calendarFile";
 import Schedule from "./schedule/schedule";
 
-const scheduleLocation = "./schedule.json";
+let values: ReturnType<typeof parseArgs>["values"];
+
+try {
+	({ values } = parseArgs({
+		options: {
+			schedule: { type: "string", short: "s", default: "./schedule.json" },
+			out: { type: "string", short: "o", default: "./out/rotated.ics" },
+			generate: { type: "boolean", short: "g" },
+			help: { type: "boolean", short: "h" },
+		},
+	}));
+} catch (err) {
+	console.error("Invalid arguments:", err instanceof Error ? err.message : err);
+	process.exit(1);
+}
+
+// assertions are safe due to defaults in parseArgs
+const scheduleLocation = values["schedule"] as string;
+const out = values["out"] as string;
+
+if (values["help"]) {
+	console.log(
+		[
+			`Options:`,
+			`  -s <schedule>   : Schedule location (default: "./schedule.json")`,
+			`  -o <out>        : Output location   (default: "./out/rotated.ics")`,
+			`  -g <generate>   : Create a new schedule.json template`,
+			`  -h <help>       : Show this info`,
+		].join("\n"),
+	);
+	process.exit();
+}
+
+if (values["generate"]) {
+	const tempSchedule = new Schedule();
+	tempSchedule.timezones.extCachePath = "./cache.json";
+	if (await Bun.file(scheduleLocation).exists()) {
+		console.error(
+			`File already exists: '${scheduleLocation}', cancelling operation.\nRerun without -g`,
+		);
+		process.exit();
+	}
+	await Bun.write(scheduleLocation, JSON.stringify(tempSchedule, null, 2));
+	console.log(`Generated, please modify '${scheduleLocation}' and rerun without -g.`);
+	process.exit();
+}
 
 let schedule: Schedule;
 
 // if there is no schedule, tell the user to make one and exit
 if (!(await Bun.file(scheduleLocation).exists())) {
-	const tempSchedule = new Schedule();
-	tempSchedule.timezones.extCachePath = "./cache.json";
-	await Bun.write(scheduleLocation, JSON.stringify(tempSchedule, null, 2));
-	const scheduleFullLocation = `${import.meta.dir}/${scheduleLocation}`;
 	console.error(
-		`ERROR: schedule.json not found! Creating template, please modify '${scheduleFullLocation}'.\nRun program again once data is in schedule.json`,
+		`ERROR: schedule.json not found!\nRun program again with -g to generate template`,
 	);
 	process.exit();
 }
@@ -28,15 +70,8 @@ try {
 }
 
 const rotated = await schedule.generateRotation(true);
-const forceRotated = await schedule.forceGenerateRotation(true);
-const simple = schedule.getSimpleSchedule();
-const rotatedJSON = JSON.stringify(rotated, null, 2);
-const forceRotatedJSON = JSON.stringify(forceRotated, null, 2);
-const simpleJSON = JSON.stringify(simple, null, 2);
+const calendarFile = createCalendarFile(rotated);
 
-await Bun.write("./out/Schedule-Rotated.json", rotatedJSON);
-await Bun.write("./out/Schedule-Force-Rotated.json", forceRotatedJSON);
-await Bun.write("./out/Schedule-Simple.json", simpleJSON);
-await Bun.write("./out/Calendar.ics", createCalendarFile(forceRotated));
+await Bun.write(out, calendarFile);
 
-console.log("Wrote some stuff");
+console.log(`Wrote some stuff to '${out}'`);
