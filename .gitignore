@@ -1,0 +1,25 @@
+# Dependencies
+node_modules/
+
+# Build output
+dist/
+
+# Bun
+*.tsbuildinfo
+
+# Environment variables
+.env
+.env.test
+
+# OS
+.DS_Store
+
+# Logs
+*.log
+
+# Project-specific generated files
+out/
+rotation.json
+calendar.csv
+cache.json
+schedule.json

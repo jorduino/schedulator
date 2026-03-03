@@ -1,0 +1,40 @@
+{
+	"name": "schedulator",
+
+	// Use Microsoft's Ubuntu Base image for the dev container
+	"image": "mcr.microsoft.com/devcontainers/base:ubuntu",
+	"features": {
+		"ghcr.io/michidk/devcontainers-features/bun:1": {}
+	},
+
+	"privileged": true,
+
+	"onCreateCommand": {
+		// Install dependencies in the dev container
+		"install-bun-packages": "bun install"
+	},
+
+	"customizations": {
+		"vscode": {
+			"settings": {
+				// Define suggested settings for the dev container
+				"resmon.show.battery": false,
+				"resmon.show.cpufreq": false,
+				"workbench.colorTheme": "Monokai Pro",
+				"workbench.iconTheme": "material-icon-theme"
+			},
+			"extensions": [
+				"biomejs.biome",
+				"editorconfig.editorconfig",
+				"oven.bun-vscode",
+				"davidanson.vscode-markdownlint",
+				"yzhang.markdown-all-in-one",
+				"PKief.material-icon-theme",
+				"aaron-bond.better-comments",
+				"af4jm.vscode-icalendar",
+				"monokai.theme-monokai-pro-vscode",
+				"YoavBls.pretty-ts-errors"
+			]
+		}
+	}
+}
