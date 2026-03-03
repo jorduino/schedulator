@@ -1,3 +1,4 @@
+import { resolve } from "node:path";
 import { parseArgs } from "util";
 import createCalendarFile from "./calendarFile";
 import Schedule from "./schedule/schedule";
@@ -19,8 +20,8 @@ try {
 }
 
 // assertions are safe due to defaults in parseArgs
-const scheduleLocation = values["schedule"] as string;
-const out = values["out"] as string;
+const scheduleLocation = resolve(values["schedule"] as string);
+const out = resolve(values["out"] as string);
 
 if (values["help"]) {
 	console.log(
