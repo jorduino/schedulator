@@ -43,31 +43,27 @@ if (values["generate"]) {
 		console.error(
 			`File already exists: '${scheduleLocation}', cancelling operation.\nRerun without -g`,
 		);
-		process.exit();
+		process.exit(1);
 	}
 	await Bun.write(scheduleLocation, JSON.stringify(tempSchedule, null, 2));
-	console.log(`Generated, please modify '${scheduleLocation}' and rerun without -g.`);
+	console.log(`Generated '${scheduleLocation}'. Fill it in and rerun without -g.`);
 	process.exit();
 }
 
 let schedule: Schedule;
 
-// if there is no schedule, tell the user to make one and exit
-if (!(await Bun.file(scheduleLocation).exists())) {
-	console.error(
-		`ERROR: schedule.json not found!\nRun program again with -g to generate template`,
-	);
-	process.exit();
-}
-
 try {
 	const scheduleData = await Bun.file(scheduleLocation).text();
-	console.log("Got the file");
 	schedule = new Schedule(scheduleData);
-	console.log("Schedule got parsed");
 } catch (err) {
-	console.error(err);
-	process.exit();
+	if (err instanceof Error && "code" in err && err.code === "ENOENT") {
+		console.error(
+			`ERROR: schedule file not found at '${scheduleLocation}'.\nRun with -g to generate a template.`,
+		);
+	} else {
+		console.error(err);
+	}
+	process.exit(1);
 }
 
 const rotated = await schedule.generateRotation(true);
@@ -75,4 +71,4 @@ const calendarFile = createCalendarFile(rotated);
 
 await Bun.write(out, calendarFile);
 
-console.log(`Wrote some stuff to '${out}'`);
+console.log(`Wrote calendar to '${out}'.`);

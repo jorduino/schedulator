@@ -7,14 +7,14 @@ type Event = {
 	timezone: string;
 };
 
-const header: string[] = [
+const header = [
 	"BEGIN:VCALENDAR",
 	"VERSION:2.0",
 	"PRODID:-//schedulator//schedulator//EN",
 	"CALSCALE:GREGORIAN",
 	"METHOD:PUBLISH",
-];
-const footer: string[] = ["END:VCALENDAR"];
+].join("\r\n");
+const footer = "END:VCALENDAR";
 
 export default function createCalendarFile(rotatedSchedule: RotatedSchedule): string {
 	const body: string[] = [];
@@ -33,15 +33,13 @@ export default function createCalendarFile(rotatedSchedule: RotatedSchedule): st
 			);
 		}
 	}
-	return [header.join("\r\n"), ...body, footer.join("\r\n")].join("\r\n\r\n");
+	return [header, ...body, footer].join("\r\n\r\n");
 }
-export function createCalendarEvent(event: Event): string {
-	const eventHead: string = "BEGIN:VEVENT";
-	const eventBody: string[] = [];
-	const eventFoot: string = "END:VEVENT";
 
+export function createCalendarEvent(event: Event): string {
 	const description = `${event.town} - ${formatTime(event.dateTimeString)}: ${event.placements}`;
-	eventBody.push(
+	const lines = [
+		"BEGIN:VEVENT",
 		`UID:${eventUID(event.dateTimeString, event.town)}`,
 		`DTSTAMP:${toICSDate(new Date())}`,
 		`DTSTART;TZID=${event.timezone}:${toICSDate(event.dateTimeString)}`,
@@ -49,10 +47,10 @@ export function createCalendarEvent(event: Event): string {
 		`SUMMARY:${description}`,
 		`DESCRIPTION:${description}`,
 		`LOCATION:${event.town}`,
-		`STATUS:CONFIRMED`,
-	);
-
-	return [eventHead, ...eventBody, eventFoot].join("\r\n");
+		"STATUS:CONFIRMED",
+		"END:VEVENT",
+	];
+	return lines.join("\r\n");
 }
 
 function getEndTime(startTime: string): string {
@@ -67,7 +65,7 @@ function eventUID(date: string, town: string): string {
 	return `${hash}@schedulator`;
 }
 
-function formatTime(dateTimeString: string | Date): string {
+function formatTime(dateTimeString: string): string {
 	return new Date(dateTimeString).toLocaleTimeString("en-US", {
 		hour: "numeric",
 		minute: "2-digit",

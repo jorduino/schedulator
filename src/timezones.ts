@@ -15,9 +15,9 @@ export default class Timezones {
 			if (!Timezones.isCacheValid(cache)) {
 				throw new Error("Tried to initialize Timezone with bad cache");
 			}
-			this.cache = new Map([...(cache as TZCache)]);
+			this.cache = new Map(cache as TZCache);
 		} else {
-			this.cache = new Map([]);
+			this.cache = new Map();
 		}
 	}
 
@@ -76,7 +76,6 @@ export default class Timezones {
 		if (!(cache instanceof Map)) {
 			return false;
 		}
-		// cache.forEach((value, key)
 		for (const [key, value] of cache) {
 			if (typeof value !== "string" || typeof key !== "string") {
 				return false;
@@ -88,42 +87,42 @@ export default class Timezones {
 	public async writeCache(): Promise<void> {
 		if (!this.extCachePath) {
 			throw new Error("Tried to save Timezone cache with no external save path");
-		} else {
-			try {
-				// not sure if we should read before write, could read bad data or could overwrite data
-				// probably want to allow user to decide whether to read before to allow option of overwrite
-				// await this.readCache();
-				await Bun.write(this.extCachePath, JSON.stringify([...this.cache]));
-			} catch (e) {
-				throw new Error(`Error writing cache:\n${e}`);
-			}
+		}
+		try {
+			await Bun.write(this.extCachePath, JSON.stringify([...this.cache]));
+		} catch (e) {
+			throw new Error(`Error writing cache:\n${e}`);
 		}
 	}
 
 	public async readCache(): Promise<void> {
 		if (!this.extCachePath) {
 			throw new Error("Tried to read Timezone cache with no external save path");
-		} else {
-			try {
-				const cacheData = JSON.parse(await Bun.file(this.extCachePath).text());
-				const tempMap = new Map([...cacheData]);
-				if (!Timezones.isCacheValid(tempMap)) {
-					throw new Error("Tried to read invalid cache");
-				}
-				this.cache = new Map([...this.cache, ...(tempMap as TZCache)]);
-			} catch (e) {
-				throw new Error(`Error reading cache:\n${e}`);
+		}
+		try {
+			const cacheData = JSON.parse(await Bun.file(this.extCachePath).text());
+			if (!Array.isArray(cacheData)) {
+				throw new Error("Cache file is not valid");
 			}
+			const tempMap = new Map(cacheData);
+			if (!Timezones.isCacheValid(tempMap)) {
+				throw new Error("Tried to read invalid cache");
+			}
+			this.cache = new Map([...this.cache, ...(tempMap as TZCache)]);
+		} catch (e) {
+			throw new Error(`Error reading cache:\n${e}`);
 		}
 	}
+
 	public async clearCache(): Promise<void> {
-		this.cache = new Map([]);
+		this.cache.clear();
 		await this.writeCache();
 	}
+
 	public toJSON() {
 		return {
-			extCachePath: this.extCachePath !== undefined ? String(this.extCachePath) : undefined,
-			cache: [...this.cache], // Map → [["city", "tz"], ...]
+			extCachePath: this.extCachePath,
+			cache: [...this.cache],
 		};
 	}
 }

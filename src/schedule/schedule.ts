@@ -226,8 +226,7 @@ export async function rotateOneEngagement(
 	timezones: Timezones,
 ): Promise<RotatedEngagement> {
 	const rotatedEngagement = structuredClone(engagement);
-	employees = structuredClone(employees);
-	locations = structuredClone(locations);
+	employees = [...employees];
 
 	const timezone =
 		rotatedEngagement.timezone ?? (await timezones.askUserForTimezone(engagement.town));
